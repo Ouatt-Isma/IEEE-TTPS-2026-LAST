@@ -3,12 +3,13 @@
 
 Our evaluation shows that PaTAS produces trust estimates that converge during training, respect the properties of \cref{sec:ptastheory}, and remain interpretable under noisy features, corrupted labels, and adversarial perturbations. We vary input trustworthiness from fully trusted through fully uncertain to fully distrusted, track the trust, uncertainty, and distrust mass, and compare against post-training accuracy.
 
-We conduct three experiments of increasing complexity:  
+We conduct four experiments of increasing complexity:
 \begin{enumerate}
-  \item \emph{Breast Cancer Classification}, to assess behavior on a small, tabular medical dataset.  
+  \item \emph{Breast Cancer Classification}, to assess behavior on a small, tabular medical dataset.
   \item \emph{MNIST Digit Classification}, to evaluate PaTAS across multiple neural architectures under controlled uncertainty.
-  % and randomized trust assignments.  
+  % and randomized trust assignments.
   \item \emph{Poisoned MNIST}, to evaluate PaTAS and IPTA in the presence of adversarial corruption and data poisoning.
+  \item \emph{Comparative Trust Evaluation}, to quantify PaTAS against established uncertainty baselines on out-of-distribution and corruption detection, and to characterize when input-level trust is informative.
 \end{enumerate}
 
 \vspace{-0.5em}
@@ -36,12 +37,17 @@ We evaluate PaTAS on MNIST~\cite{lecun1998mnist} (60{,}000 training and 10{,}000
 We poison one third of the MNIST training images by flipping the labels of digits 6 and 9 and simultaneously adding a visible patch of fixed size at the top-left corner, following common data-poisoning and backdoor practice~\cite{chen2017targetedbackdoorattacksdeep}; the remaining two thirds stay clean. This lets us examine how PaTAS responds to corrupted labels and adversarial triggers. We use the 784-128-10 architecture. Patch pixels and the labels of patched 6s and 9s are assigned distrust, everything else trust, so that PaTAS focuses on the corrupted regions while trusting the unaffected data.
 
 
+\subsubsection{Experiment 4 - Comparative Trust Evaluation}\label{exp:4}
+We compare the per-sample PaTAS assessment against three established uncertainty baselines sharing the base architecture and training regime: the maximum softmax probability, MC~Dropout~\cite{gal2016dropoutbayesianapproximationrepresenting} ($T{=}30$ passes, $p{=}0.2$), and Evidential Deep Learning~\cite{sensoy2018evidentialdeeplearningquantify}. DeepTrust~\cite{10.3389/frai.2020.00054} has no public implementation and is discussed in \cref{sec:rw}. Primary datasets are MNIST and Fashion-MNIST~\cite{xiao2017fashionmnist} (784-512-10, 20 epochs); GTSRB~\cite{GTSRB} (1024-128-43, features standardized with train statistics) serves as an applicability-boundary case discussed below.
+
+The PaTAS assessment instantiates route~(ii) of \cref{sec:acquisition}: each input feature receives a trust opinion from its conformity to the training-data statistics, mapped through the same Baseline-Prior Quantification as parameter trust (\cref{eq:q1}), with per-feature evidence weighted by the feature's reliability as a witness, $w_j = (\sigma_{\mathrm{ref}}/\sigma_j)^2$ (inverse-variance weighting, capped at 64). The trust factor is the serial discount $P = P_{\mathrm{model}} \cdot P_{\mathrm{input}}$ of the IPTA path trust under a fully trusted input and the pooled input conformity, and the reported score anchors the discounted confidence at the class prior, $P \cdot \hat{p} + (1-P)/K$. Every method is evaluated identically on clean test data, under Bernoulli-uniform feature corruption ($p \in \{0.3, 0.6\}$, amplitude scaled to the feature range), on a mixed batch pooling clean and corrupted inputs 1:1, and as a detector of out-of-distribution inputs (the OOD set passes through the identical preprocessing pipeline: Fashion-MNIST for MNIST and vice versa); post-hoc isotonic calibration is fit for each method on a held-out clean split. Results are mean~$\pm$~std over three evaluation seeds.
+
 \paragraph*{Implementation Details for All Experiments}
 During inference, multiplication operations in the feedforward phase are implemented using SL trust discounting, while addition operations employ a generalized SL averaging fusion operator to support summations over multiple inputs (see \cref{def:trustfunc}). Trust revision uses the same averaging fusion. The PaTAS framework and Neural Network were implemented in Python 3.13 using NumPy. Two main modules were developed: \texttt{PrimaryNN}, which handles network structure, training, and inference, and \texttt{PaTAS}, which implements trust assessment and propagation functions defined in the operational flow (\cref{fig:ptasoperation}). These modules interact to dynamically evaluate and update trust during feedforward and backpropagation. The full implementation, including all modules, dependencies, and experiment scripts, is available as \suppp, with detailed instructions for reproducing all experiments.
 
 \vspace{-0.5em}
 \subsection{Results and Analysis}
-Evaluation is performed during training: after each feedforward/backpropagation iteration we assess the trustworthiness of the resulting output under three boundary input profiles, fully trusted, fully uncertain, and fully distrusted, which are the most informative extreme cases. For each, we track the trust, uncertainty, and distrust mass over training, giving nine curves per experiment\footnote{The base rate is set to $0.5$ and held constant across all experiments.}. Results are collected in the \supp and summarized in \cref{tab:cancer_results,tab:mnist,tab:mnistpois,tab:mnistpoisipta}; they confirm several properties proven in \cref{sec:ptastheory}:
+Evaluation is performed during training: after each feedforward/backpropagation iteration we assess the trustworthiness of the resulting output under three boundary input profiles, fully trusted, fully uncertain, and fully distrusted, which are the most informative extreme cases. For each, we track the trust, uncertainty, and distrust mass over training, giving nine curves per experiment (Experiments 1--3)\footnote{The base rate is set to $0.5$ and held constant across all experiments.}. Results are collected in the \supp and summarized in \cref{tab:cancer_results,tab:mnist,tab:mnistpois,tab:mnistpoisipta}; they confirm several properties proven in \cref{sec:ptastheory}:
 
 \begin{table*}[ht]
 \begin{minipage}{0.63\textwidth}
@@ -167,4 +173,68 @@ Clean 6  & 96.66 & 0.866 & 0.0 & 0.134\\
 \end{tabular}
 \caption{IPTA results for a neural network trained on poisoned datasets with patch size $4\times 4$. Results are obtained by feedforwarding a fully trusted opinion through the IPTA, except for the last row where patch pixels are explicitly distrusted. All values are averaged over 10 runs with different random initialization seeds; standard deviation is below 0.001 across all inputs.}
 \label{tab:mnistpoisipta}
+\end{table}
+
+\subsubsection*{Experiment 4 -- Comparative Trust Evaluation}
+\Cref{tab:comparative} reports the two detection tasks in which trust and confidence should differ: recognizing out-of-distribution inputs, and recognizing corrupted inputs inside a mixed batch. PaTAS separates MNIST from Fashion-MNIST at $0.975$ AUROC with a false-positive rate at $95\%$ TPR of $0.145$ --- against $0.883/0.413$ for the softmax baseline and $0.936/0.310$ for MC~Dropout --- and detects corrupted inputs at $0.972$ (MNIST) and $0.835$ (Fashion-MNIST) where every confidence-based baseline remains near chance ($0.51$--$0.63$). The ablation row attributes the mechanism: replacing the conformity-based input opinions with the constant fully-trusted opinion collapses PaTAS to baseline level ($0.896/0.415$ OOD, $0.639$ corruption detection), confirming that the input-level trust of \cref{def:trustfunc}, not the confidence signal, carries the detection.
+
+\begin{table}[ht]
+\centering
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lcccc}
+\toprule
+ & \multicolumn{2}{c}{OOD: MNIST vs.\ F-MNIST} & \multicolumn{2}{c}{Corruption det.\ $\uparrow$} \\
+Method & AUROC $\uparrow$ & FPR@95 $\downarrow$ & MNIST & F-MNIST \\
+\midrule
+PaTAS (ours) & $\mathbf{0.975}{\scriptstyle\pm.001}$ & $\mathbf{0.145}$ & $\mathbf{0.972}{\scriptstyle\pm.002}$ & $\mathbf{0.835}{\scriptstyle\pm.003}$ \\
+\;\;w/o input trust & $0.896$ & $0.415$ & $0.639$ & -- \\
+Softmax & $0.883{\scriptstyle\pm.004}$ & $0.413$ & $0.631$ & $0.558$ \\
+MC Dropout & $0.936{\scriptstyle\pm.002}$ & $0.310$ & $0.621$ & $0.545$ \\
+EDL & $0.883{\scriptstyle\pm.004}$ & $0.658$ & $0.547$ & $0.510$ \\
+\bottomrule
+\end{tabular}
+\caption{Detection of distribution violations (mean $\pm$ std over three evaluation seeds). OOD: each method's own score separates clean in-distribution test inputs from OOD inputs passed through the identical preprocessing. Corruption detection: AUROC separating clean from corrupted inputs in the mixed batch. The ablation row replaces conformity-based input opinions with the constant fully-trusted opinion.}
+\label{tab:comparative}
+\end{table}
+
+On in-distribution data the two signals coincide: PaTAS matches the softmax filter on correct-vs-incorrect discrimination on clean test data ($0.979 \pm 0.003$ for both, MNIST), and after identical post-hoc calibration their calibration error is equal ($\mathrm{ECE}=0.006$). Under corruption the signals separate in the expected direction: the corruption barely reduces accuracy ($97.9\% \to 97.6\%$ on the mixed batch), so the softmax retains a higher correct-vs-incorrect AUROC ($0.974$ vs.\ $0.895$) precisely because it ignores the distribution violation that PaTAS flags. Trust and confidence are thus complementary: confidence ranks correctness \emph{within} the training distribution, while trust exposes inputs that \emph{leave} it --- the case where confident predictions are unwarranted even when they happen to be correct. Directionality follows from the same reasoning: in the reverse OOD task (Fashion-MNIST in-distribution, MNIST as OOD), MNIST digits occupy a quiet subset of Fashion-MNIST's marginals rather than violating them, and PaTAS ($0.781$) offers no advantage over MC~Dropout ($0.834$); conformity-based trust detects support \emph{violations}, not support \emph{subsets}.
+
+\begin{table}[ht]
+\centering
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabular}{lccccc}
+\toprule
+Dataset & Med.\ $\sigma_{\mathrm{eff}}$ & $w_{\max}$ & Top-10\% & $w{\geq}4$ & Corr.\ det. \\
+\midrule
+MNIST & 0.47 & 52.3 & 0.32 & 0.40 & 0.972 \\
+Fashion-MNIST & 0.90 & 64.0 & 0.76 & 0.18 & 0.835 \\
+GTSRB & 0.98 & 1.8 & 0.14 & 0.00 & 0.545 \\
+CIFAR-10 (gray) & 0.23 & 1.1 & 0.11 & 0.00 & -- \\
+\bottomrule
+\end{tabular}
+\caption{A-priori applicability diagnostics: statistics of the conformity model fitted on each dataset's clean training features \emph{before any model is trained} (median effective deviation, maximum reliability weight, evidence share of the top decile, fraction of strong witnesses $w \geq 4$), against the corruption detection subsequently observed. Registered domains concentrate evidence in reliable witnesses; unregistered imagery has none, and input-level conformity is predicted --- and for GTSRB confirmed --- to be uninformative.}
+\label{tab:diagnostics}
+\end{table}
+
+\Cref{tab:diagnostics} explains when this input-level signal exists. Fitting the conformity model on each dataset's training features yields a self-diagnostic: spatially registered domains (MNIST, Fashion-MNIST) concentrate evidence in a minority of tight-marginal ``reliable witness'' features, and the fraction of strong witnesses even predicts the ordering of the observed detection margins ($0.40 \to 0.972$, $0.18 \to 0.835$, $0.00 \to$ chance). Unregistered imagery (GTSRB, CIFAR-10) has uniformly wide marginals --- no feature is a reliable witness --- so marginal conformity is predicted to be uninformative, which the full GTSRB battery confirms empirically (corruption detection $0.545$; OOD vs.\ grayscale CIFAR-10 $0.661$ vs.\ $0.669$ for softmax). The applicability of input-level trust can therefore be established per dataset before deployment, and richer input-trust models for unregistered domains are an explicit direction for future work.
+
+Finally, the model-side trust provides a training-quality audit that requires \emph{no test data at all}. Training the MNIST network under increasing label-flip rates $p$ and reading the PaTAS feedforward trust under a fully trusted input (\cref{tab:audit}) shows a tripwire behavior: trust drops by $31.7\%$ relative to the clean-trained model at \emph{any} non-zero corruption rate, including $p{=}0.1$ where test accuracy moves by only $3$ points and mean confidence by $14\%$. Mean softmax confidence, in contrast, tracks the flip rate almost linearly (cross-entropy on $p$-flipped labels converges toward the label purity) and therefore \emph{measures} severity --- but reading it requires a clean labelled test set, and a moderate confidence value is indistinguishable from a merely difficult task. The two signals answer different questions: PaTAS trust detects \emph{that} training data was corrupted from the training dynamics alone; confidence quantifies the damage given labelled data.
+
+\begin{table}[ht]
+\centering
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{cccccc}
+\toprule
+$p$ & Test acc.\ (\%) & Mean conf. & PaTAS trust & $\Delta$trust & $\Delta$conf. \\
+\midrule
+0   & 97.9 & 0.981 & 0.998 & --     & --     \\
+0.1 & 94.7 & 0.841 & 0.682 & 31.7\% & 14.2\% \\
+0.2 & 95.7 & 0.762 & 0.682 & 31.7\% & 22.3\% \\
+0.3 & 93.7 & 0.684 & 0.682 & 31.7\% & 30.3\% \\
+0.4 & 91.2 & 0.589 & 0.682 & 31.7\% & 39.9\% \\
+0.5 & 82.8 & 0.476 & 0.681 & 31.7\% & 51.5\% \\
+\bottomrule
+\end{tabular}
+\caption{Training-quality audit (MNIST, 784-512-10): models trained under label-flip rate $p$. PaTAS trust is the feedforward opinion under a fully trusted input --- computed from training dynamics alone, without test data --- and acts as a corruption tripwire ($\Delta$ = relative drop vs.\ $p{=}0$); mean softmax confidence tracks severity but requires a clean labelled test set.}
+\label{tab:audit}
 \end{table}
