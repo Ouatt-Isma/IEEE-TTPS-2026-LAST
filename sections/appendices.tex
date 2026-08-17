@@ -125,7 +125,7 @@ $T_{x^{(l-1)}_j}$ & Trust in the input feature to parameter $\theta^{(l)}_{i,j}$
 \multicolumn{2}{l}{\textbf{Operators Used}} \\
 $\bigwedge$ & Batch-wise fusion of trust opinions \\
 $\circledcirc$ & Inferential deduction operator \\
-$\circleddash$ & Trust-revision operator (Fusion-based revision)\\
+$\circleddash$ & Trust-revision operator (fusion-based revision)\\
 $\odot$ & SL binomial multiplication \\
 $\oslash$ & Conservative combination operator \\
 \hline
@@ -188,11 +188,10 @@ $\epsilon$ & Gradient sensitivity threshold in \textsc{NodeTrust} \\[4pt]
 \multicolumn{2}{l}{\textbf{Trust Operators (SL Operators + PaTAS-specific)}} \\
 $\oplus$ & SL fusion operator (cumulative or averaging fusion) \\
 $\otimes$ & SL trust-discounting operator \\
-$\ominus$ & SL opinion-revision operator \\
 $\odot$ & SL binomial multiplication \\
 $\oslash$ & Conservative combination operator used in parameter updates \\
 $\circledcirc$ & Inferential deduction operator in PaTAS \\
-$\circleddash$ & Trust-revision operator used for parameter updates \\
+$\circleddash$ & Trust-revision operator (fusion-based revision) used for parameter updates \\
 $\bigwedge$ & Batch-wise fusion of trust opinions \\[4pt]
 
 \multicolumn{2}{l}{\textbf{PaTAS System Components}} \\
@@ -730,11 +729,32 @@ x', & \text{otherwise}.
 \]
 To model distrust, we generate corrupted inputs by sampling from a uniform distribution over the feature space:
 \[
-x' \sim U(\min(\text{features}, \max(\text{features})),
+x' \sim U(\min(\text{features}), \max(\text{features})),
 \]
 
 Label degradation is modeled analogously: uncertainty is introduced via random label noise, while full distrust is represented by a complete replacement of the labels.
 
+\section{Conformity-Based Input-Trust Construction (\cref{exp:4})}\label{app:conformity}
+This appendix specifies the input-trust construction used in \cref{exp:4} precisely; all parameters are fixed once and shared by every dataset.
+
+Let the clean training features be $x^{(1)},\dots,x^{(n)} \in \mathbb{R}^m$. For each feature $j$ we compute the marginal mean $\mu_j$ and standard deviation $\sigma_j$, and a robust span $S$ of the whole feature matrix as the difference between its $99.5$th and $0.5$th percentiles. The \emph{effective deviation} is floored at a fraction of the span,
+\[
+\sigma^{\mathrm{eff}}_j = \max(\sigma_j,\, 0.02\, S),
+\]
+so that near-constant features cannot produce unbounded standardized deviations from minimal perturbations. For an input $x$, the standardized deviation is $z_j = |x_j - \mu_j| / \sigma^{\mathrm{eff}}_j$ and the conformity is
+\[
+g_j = \exp\!\big(-\tfrac{1}{2}\max(z_j - 1,\, 0)^2\big) \in (0,1],
+\]
+so deviations within one effective standard deviation are fully conforming and only the excess erodes conformity. The \emph{reliability weight} of feature $j$ is the capped inverse-variance weight
+\[
+w_j = \min\!\big((\sigma_{\mathrm{ref}} / \sigma^{\mathrm{eff}}_j)^2,\, 64\big),
+\qquad \sigma_{\mathrm{ref}} = \operatorname{median}_j \sigma^{\mathrm{eff}}_j,
+\]
+expressing that a feature with a tight training distribution is a reliable witness whose violation is unambiguous, while the cap bounds the influence any single feature can exert. Each feature contributes evidence $r_j = N w_j g_j$ and $s_j = N w_j (1-g_j)$ with base evidence mass $N = 50$, mapped to a binomial opinion by \cref{eq:q1} with $W = 2$; this is the same quantification used for parameter trust. The per-sample input trust $P_{\mathrm{input}}$ is the projected probability (base rate $0.5$) of the pooled opinion obtained by applying \cref{eq:q1} to the summed evidence $(\sum_j r_j, \sum_j s_j)$, which corresponds to cumulative fusion of independent evidence sources.
+
+The columns of \cref{tab:diagnostics} are, in this notation: the median of $\sigma^{\mathrm{eff}}_j$, the maximum of $w_j$, the share of total weight mass held by the top decile of features ranked by $w_j$, and the fraction of features with $w_j \geq 4$. The last two are descriptive statistics of weight concentration used for reporting only (the threshold $w_j \geq 4$ corresponds to $\sigma^{\mathrm{eff}}_j$ at most half of $\sigma_{\mathrm{ref}}$); they are not parameters of the construction.
+
+\vspace{-0.5em}
 \section{Detailed results}\label{app:expres}
 
 \begin{figure}[H]

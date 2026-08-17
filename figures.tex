@@ -175,15 +175,15 @@
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.62\textwidth]{plots_v2/exp4/roc_ood_mnist.pdf}
-  \caption{Out-of-distribution detection ROC (MNIST in-distribution vs.\ Fashion-MNIST OOD): each method's own score as the discriminator, corresponding to \cref{tab:comparative}.}
+  \caption{Out-of-distribution detection ROC (MNIST in-distribution vs.\ Fashion-MNIST OOD): each method's own score as the discriminator. Curves and legend AUC values are from a single representative evaluation seed; \cref{tab:comparative} reports mean $\pm$ std over three seeds.}
 \end{figure}
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.62\textwidth]{plots_v2/exp4/roc_mixed_fashion.pdf}
-  \caption{Correct-vs-incorrect ROC on the Fashion-MNIST mixed batch (clean + corrupted inputs pooled 1:1).}
+  \caption{Correct-vs-incorrect ROC on the Fashion-MNIST mixed batch (clean + corrupted inputs pooled 1:1), single representative evaluation seed.}
 \end{figure}
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.62\textwidth]{plots_v2/exp4/model_trust_vs_labelnoise.pdf}
-  \caption{Training-quality audit (\cref{tab:audit}): PaTAS model-side trust, mean softmax confidence, and test accuracy as functions of the train-time label-flip rate $p$. Trust drops as a tripwire at any non-zero rate without using test data; confidence tracks severity but requires a clean labelled test set.}
+  \caption{Training-quality audit (\cref{tab:audit}): PaTAS model-side trust, mean softmax confidence, and test accuracy as functions of the train-time label-flip rate $p$. The depth-normalized curve rescales the committed mass $b+d$ of the aggregated opinion to $(b+d)^{1/L}$, with $L$ the number of trust-propagation layers, making trust comparable across network depths. Trust drops as a tripwire at any non-zero rate without using test data; confidence tracks severity but requires a clean labelled test set.}
 \end{figure}
