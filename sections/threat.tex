@@ -1,0 +1,15 @@
+\vspace{-0.5em}
+\subsection{Threat Model and Security Scope}\label{sec:threat}
+\vspace{-0.5em}
+
+\paragraph*{Assets and goal}
+The asset PaTAS protects is the \emph{reliability of individual model predictions at inference time}. A defender wishes to know, per query, whether an output can be trusted given the quality of the input, the reliability of the training data, and the parameters through which the input is propagated. PaTAS is a \emph{detection and monitoring} mechanism, not a hardening one; it does not alter the model or prevent an attack, but exposes predictions with weak supporting evidence.
+
+\paragraph*{Adversary}
+We consider a \emph{training-time data-poisoning adversary}~\cite{chen2017targetedbackdoorattacksdeep}. The adversary can inject or relabel a bounded fraction of training samples, including backdoor triggers such as fixed pixel patches, with the goal of inducing targeted misclassifications that remain hidden behind high nominal accuracy and confidence. The adversary does not control the model architecture, the training procedure, or the trust assessments assigned to known-provenance data. This is the threat evaluated in \cref{exp:3}.
+
+\paragraph*{Defender knowledge}
+PaTAS assumes white-box access to the model (parameters, activations, and gradients), as it runs alongside training and inference, and access to trust opinions on inputs and labels. When such opinions are unavailable, the defender initializes them to a vacuous opinion \((0,0,1)\), which yields conservative, uncertainty-dominated assessments rather than false assurance (\cref{sec:acquisition}).
+
+\paragraph*{Out of scope}
+Evasion attacks crafted at inference time, model-stealing, and membership-inference attacks are outside the scope of the present evaluation. PaTAS's trust and uncertainty signals may be applicable to them, for instance by monitoring the trust profile of query streams, but we make no such claim here and defer it to future work. We likewise prove consistency properties of the trust computation (\cref{sec:ptastheory}) rather than formal robustness guarantees against a bounded adversary, which remain an open direction.

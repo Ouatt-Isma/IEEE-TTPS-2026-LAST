@@ -1,0 +1,17 @@
+When neural network parameters such as \( \theta_1 \) and \( \theta_2 \) are learned (e.g., by backpropagation), their trustworthiness depends on the data used for training. If the dataset contains mislabeled or biased samples, parameter trust will be compromised. Yet this is only part of the problem. As discussed in Section~\ref{sec:backsl}, Subjective Logic represents trust as a subjective binomial opinion with the three components trust (belief), distrust (disbelief), and uncertainty. This decomposition allows us to distinguish between different causes of unreliability: distrust may arise from systematic issues such as mislabeled or poisoned data, while uncertainty reflects variability or noise in the assessment. A central challenge, therefore, is how to exploit this advantage of subjective logic in order to make this distinction in practice.
+
+\vspace{-0.5em}
+\subsection{PaTAS General Description}
+
+To address the previous challenges, we introduce the \emph{Parallel Trust Assessment System (PaTAS)}, a framework designed to systematically propagate trust assessments through a neural network. PaTAS operates in parallel with the standard neural architecture and maintains a corresponding structure that mirrors the network’s topology. It computes trust in the output from two sources:
+\begin{enumerate}
+    \item the trust in the input features at inference time, and
+    \item the trust in the parameters, derived from the training dataset trustworthiness calculated using a trust assessment function. 
+    This includes both the trust in the input features of the training samples and the trust in the labels.
+\end{enumerate}
+To extend the trust-propagation principles introduced for the perceptron in the previous section, PaTAS organizes its Trust Nodes into a structure that mirrors the full neural network. Each neuron is associated with a corresponding Trust Node, and these nodes are connected according to the network’s topology. This generalization forms what we refer to as a Trust Nodes Network (TNN).
+\begin{definition}[Trust Nodes Network]
+The \emph{Trust Nodes Network} is a structured composition of Trust Nodes, where each Trust Node corresponds to a neuron in the underlying neural network. This network mirrors the architecture of the neural model and is responsible for propagating trust values across layers. The Trust Nodes Network computes trust assessments at each stage of inference by applying trust-specific reasoning operations aligned with the neural computation flow.
+\end{definition}
+
+The PaTAS is designed to continuously evaluate the trustworthiness and preservation of properties, such as accuracy, during the inference of a neural network. For example, an input \(x\) might be accurate, unbiased, and trustworthy (i.e., high trust score value \(T_x\)), while the corresponding output \(y\prime\) may still be unreliable due to biased or poorly calibrated parameters \(\theta\) (i.e., low trust score value \(T_{y\prime}\)). Rather than altering the neural network itself, PaTAS operates alongside it to evaluate the trustworthiness of computations (Appendix~\ref{app:flow}). Embedding trust operations inside the network would modify its internal computations, risk harming accuracy, and substantially increase the computational cost. For this reason, PaTAS performs trust assessment in parallel, ensuring that trust reasoning does not interfere with the model’s predictions or complicate its operation.

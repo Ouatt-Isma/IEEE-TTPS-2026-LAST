@@ -1,0 +1,170 @@
+\vspace{-0.5em}
+\section{Evaluation and Results}\label{sec:evaluation}
+
+Our evaluation shows that PaTAS produces trust estimates that converge during training, respect the properties of \cref{sec:ptastheory}, and remain interpretable under noisy features, corrupted labels, and adversarial perturbations. We vary input trustworthiness from fully trusted through fully uncertain to fully distrusted, track the trust, uncertainty, and distrust mass, and compare against post-training accuracy.
+
+We conduct three experiments of increasing complexity:  
+\begin{enumerate}
+  \item \emph{Breast Cancer Classification}, to assess behavior on a small, tabular medical dataset.  
+  \item \emph{MNIST Digit Classification}, to evaluate PaTAS across multiple neural architectures under controlled uncertainty.
+  % and randomized trust assignments.  
+  \item \emph{Poisoned MNIST}, to evaluate PaTAS and IPTA in the presence of adversarial corruption and data poisoning.
+\end{enumerate}
+
+\vspace{-0.5em}
+\subsection{Experimental Setup }
+\subsubsection{Experiment 1 - Breast Cancer Classification}\label{exp:1}
+We use the \href{https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic}{Breast Cancer Wisconsin (Diagnostic) Dataset}~\cite{breastcancer-wisconsin}, containing 569 samples with 30 numeric features (e.g., radius, area, symmetry) derived from breast mass fine needle aspirates. The neural network classifies the tumors into benign or malignant categories.
+The neural network architecture consists of 30 input neurons, 16 hidden neurons, and 2 output neurons, with ReLU activation in the hidden layer and Softmax in the output. The model is trained for 15 epochs with a batch size of 64 and a learning rate of 0.2, achieving 98\% accuracy when the data are not modified.
+
+We degrade the training data in controlled ways and assign corresponding trust assessments, combining three extreme profiles for features and labels alike, fully trusted \((1,0,0)\), fully distrusted \((0,1,0)\), and fully uncertain \((0,0,1)\), into nine cases. These dogmatic and vacuous opinions are the canonical boundary cases in SL. Two intermediate scenarios are added below to show behavior under partial trust.
+
+Feature and label degradation is simulated with controlled perturbation functions: uncertain features receive additive uniform noise with clipping to the valid feature range, distrusted features are resampled uniformly over the feature space, and labels are degraded analogously through random noise (uncertainty) or complete replacement (distrust). The exact perturbation functions are given in Appendix~\ref{app:perturb}.
+
+Finally, to complement the boundary cases, we evaluate two intermediate trust scenarios: 
+\begin{enumerate}[label=\roman*.]
+    \item the same scenario for a fully uncertain input features and fully uncertain labels, but where the assessment is set to \((0.25, 0.25, 0.5)\), reflecting partial distrust and trust, instead of a fully uncertain opinion (0,0,1) and,
+    \item a mild degradation, where features are perturbed with probability 0.15 and the trust assessment is set to \((0.25, 0, 0.75)\).
+    
+\end{enumerate}
+
+\subsubsection{Experiment 2 - MNIST}\label{exp:2}
+
+We evaluate PaTAS on MNIST~\cite{lecun1998mnist} (60{,}000 training and 10{,}000 test images of \(28\times28\) pixels, ten digit classes) using four architectures of increasing width: 784-16-10, 784-32-10, 784-64-10, and 784-128-10. Although not state of the art for MNIST, they suffice to expose how trust propagates across model sizes. Each uses ReLU in the hidden layer and Softmax at the output, trained for 20 epochs with batch size 128 and learning rate 0.05, reaching 99\% test accuracy (when training data are fully trusted). Trust assessments for both features and labels are fully uncertain, corresponding to no knowledge of the dataset; for contrast we repeat the smallest architecture with a fully trusted assessment.
+
+\subsubsection{Experiment 3 - Poisoned MNIST}\label{exp:3}
+We poison one third of the MNIST training images by flipping the labels of digits 6 and 9 and simultaneously adding a visible patch of fixed size at the top-left corner, following common data-poisoning and backdoor practice~\cite{chen2017targetedbackdoorattacksdeep}; the remaining two thirds stay clean. This lets us examine how PaTAS responds to corrupted labels and adversarial triggers. We use the 784-128-10 architecture. Patch pixels and the labels of patched 6s and 9s are assigned distrust, everything else trust, so that PaTAS focuses on the corrupted regions while trusting the unaffected data.
+
+
+\paragraph*{Implementation Details for All Experiments}
+During inference, multiplication operations in the feedforward phase are implemented using SL trust discounting, while addition operations employ a generalized SL averaging fusion operator to support summations over multiple inputs (see \cref{def:trustfunc}). Trust revision uses the same averaging fusion. The PaTAS framework and Neural Network were implemented in Python 3.13 using NumPy. Two main modules were developed: \texttt{PrimaryNN}, which handles network structure, training, and inference, and \texttt{PaTAS}, which implements trust assessment and propagation functions defined in the operational flow (\cref{fig:ptasoperation}). These modules interact to dynamically evaluate and update trust during feedforward and backpropagation. The full implementation, including all modules, dependencies, and experiment scripts, is available as \suppp, with detailed instructions for reproducing all experiments.
+
+\vspace{-0.5em}
+\subsection{Results and Analysis}
+Evaluation is performed during training: after each feedforward/backpropagation iteration we assess the trustworthiness of the resulting output under three boundary input profiles, fully trusted, fully uncertain, and fully distrusted, which are the most informative extreme cases. For each, we track the trust, uncertainty, and distrust mass over training, giving nine curves per experiment\footnote{The base rate is set to $0.5$ and held constant across all experiments.}. Results are collected in the \supp and summarized in \cref{tab:cancer_results,tab:mnist,tab:mnistpois,tab:mnistpoisipta}; they confirm several properties proven in \cref{sec:ptastheory}:
+
+\begin{table*}[ht]
+\begin{minipage}{0.63\textwidth}
+\centering
+\begin{tabular}{cccccc}
+\hline
+X Trust Assessment & Y Trust Assessment& \(\epsilon = 0.01\) & \(\epsilon = 0.1\) & Train (\%) & Test (\%) \\
+\hline
+fully distrusted & any & 0 & 0 & 61--65 & 40--56 \\
+any & fully distrusted & 0 & 0 & 97--99 & 0 \\
+fully uncertain & fully uncertain & 0.26 & 0.27 & 59 & 64 \\ % noise-noise
+% \hline
+fully uncertain & fully trusted & 0.28 & 0.32 & 97 & 96 \\ % noise-clean
+% \hline
+ fully trusted & fully uncertain & 0.27 & 0.28 & 64 & 72 \\ % clean-noise
+% \hline
+fully trusted & fully trusted & 0.7 & 0.87 & 99 & 98 \\ % clean-clean
+(0.25, 0.25, 0.5) & (0.25, 0.25, 0.5)& - & 0.18 & 59 & 64 \\ % clean-clean
+% \hline
+(0.25, 0, 0.75) & (0.25, 0, 0.75)& - & 0.34 & 71 & 80\\ % clean-noise
+% \hline
+
+\hline
+\end{tabular}
+\caption{Final trust mass and train/test accuracy (\%) for the Breast Cancer experiment. Rows where either assessment is fully distrusted collapse to zero trust and are grouped.}
+\label{tab:cancer_results}
+\end{minipage}
+\hfill
+\begin{minipage}{0.37\textwidth}
+\centering
+\begin{tabular}{cccc}
+\hline
+Hidden Neurons & Trust \(t\) & Train (\%) & Test (\%) \\
+\hline
+16 & 0.281 & 46 & 78\\
+% \hline
+32 & 0.291 & 47 & 77 \\
+% \hline
+64 & 0.295 & 47 & 90\\
+% \hline
+128 & 0.298 & 48 & 92\\
+% \hline
+16 (trust) & 0.869 & 96 & 95\\
+\hline
+\end{tabular}
+\caption{Summary of final trust mass for the MNIST Classification Experiment.}
+\label{tab:mnist}
+\end{minipage}
+
+\end{table*}
+
+\begin{itemize}
+\item \emph{Convergence of Trust Assessment}: when accuracy converges, trust assessment converges as expected.
+\item \emph{Inference on fully uncertain input yields fully uncertain output}: a fully uncertain input always produces a fully uncertain output.
+\item \emph{Symmetric Inference}: when input trust assessments are symmetric, the inference results remain symmetric.
+\end{itemize}
+
+We therefore report only the fully trusted input case in detail: uncertain inputs yield uncertain outputs and symmetry makes the distrusted case a mirror of the trusted one (\cref{thm:infvac}), and under trusted inputs the distrust mass stays close to zero, so the trust mass alone determines the opinion. \Cref{tab:cancer_results,tab:mnist,tab:mnistpois,tab:mnistpoisipta} report the converged trust mass.
+
+
+\subsubsection*{Experiment 1 -- Breast Cancer Classification}
+Corrupted labels mislead rather than prevent learning: training accuracy stays high while test accuracy collapses. Noisy labels prevent learning altogether, and corrupted features eliminate it in every setting.
+
+We evaluated the system for two values of $\epsilon$ (0.1 and 0.01), as summarized in \cref{tab:cancer_results}. We recall that $\epsilon$ is the threshold used by the NodeTrust function in \cref{alg:trustupdate}.
+\begin{itemize}
+\item For $\epsilon = 0.01$: fully uncertain $X$ stabilizes trust mass around 0.26 for uncertain $Y$ and 0.28 for trusted $Y$. Fully trusted $X$ yields rapid increases, stabilizing at $\sim 0.27$ for uncertain $Y$ and $0.70$ for trusted $Y$.
+\item For $\epsilon = 0.1$: the system becomes less sensitive to gradients. When $X$ is uncertain, trust mass stabilizes around 0.27 for uncertain $Y$, and 0.32 for trusted $Y$. Fully trusted $X$ gives 0.28 for uncertain $Y$, and 0.87 for trusted $Y$. No matter $\epsilon$ value, when $X$ or $Y$ are distrusted the trust mass rapidly falls to 0.
+\end{itemize}
+Overall, there is a strong positive correlation between trust mass and test accuracy. Moreover, when $\epsilon$ is smaller, the trust level of $Y$ (trusted, uncertain) has a weaker influence on the 
+final trust mass.
+
+Two findings are worth emphasizing. First, \emph{label trust matters more than feature trust}: setting $X$ as fully uncertain while keeping $Y$ trusted yields a higher trust mass (0.32) than the opposite case, where $X$ is trusted but $Y$ uncertain (0.28). Second, \emph{distrust is more damaging than uncertainty}: replacing a fully uncertain opinion $(0,0,1)$ for both $X$ and $Y$ with a mixed assessment $(0.25,0.25,0.5)$ reduces the trust mass from $0.27$ to $0.18$, showing that even partial distrust degrades trust more strongly than uncertainty alone.
+
+
+
+
+\subsubsection*{Experiment 2 -- MNIST Dataset}
+In this experiment, PaTAS produces ten output trust opinions, one for each class. However they are almost the same so we record only the aggregated trust mass in the table. As shown in \cref{tab:mnist}, when features and labels are noisy, accuracy improves as model size increases. Test accuracy is consistently greater than training accuracy across all architectures, suggesting training noise makes the model underestimate its learning progress. While trust increases with model size, the gains become progressively smaller (0.281 $\to$ 0.291 $\to$ 0.295 $\to$ 0.298). This contrasts clearly with the fully trusted evaluation on the smallest architecture, which achieves a trust mass of 0.869, far exceeding any uncertain-data configuration regardless of model size. This highlights that \emph{training a smaller architecture on trusted data is significantly more beneficial for trust than training a larger architecture on uncertain data}. Moreover, we can see that larger architectures yield more stable trust assessments, likely due 
+to smaller average gradient magnitudes.
+
+
+\subsubsection*{Experiment 3 – Poisoned MNIST Dataset}
+As in the previous experiment, PaTAS has ten output trust opinions. These values are informative because the reliability of the inference path vary across labels, especially when some are patched and others are not. In \cref{tab:mnistpois}, we report the trust mass associated with label 3 (a clean class) and label 6 (a poisoned class; see \cref{exp:3}). Alongside overall train and test accuracy, we also report accuracy on clean test samples of digits 3 and 6, as well as accuracy on poisoned versions of those test samples.
+
+The results suggest that PaTAS is able to reflect differences in reliability between the clean and poisoned classes, even under moderate corruption. Across all patch sizes, the trust mass assigned to label 3 consistently remains higher than that assigned to label 6, confirming that PaTAS reliably distinguishes clean from poisoned inference paths. As shown in \cref{tab:mnistpois}, both trust values decrease as the patch size grows, since larger patches affect a greater number of neurons along the inference path, thereby reducing the overall reliability of the parameters associated with those paths and progressively affecting even the neurons involved in predicting clean classes. This degradation becomes extreme at $27 \times 27$, where the patch dominates nearly the entire input, causing a collapse of trust assessment for all labels (0.035 and 0.028 for labels 3 and 6 respectively). For smaller patches ($1 \times 1$, $4 \times 4$, 
+and $10 \times 10$), a clear and interpretable separation between clean and poisoned trust scores is maintained.
+
+To evaluate the IPTA, \Cref{tab:mnistpoisipta} reports both accuracy and the corresponding trust opinions for clean digits (3 and 6) and patched digit 6 datasets. The trust opinion is obtained by feedforwarding a fully trusted opinion through the IPTA derived from clean digit 3, clean digit 6, and patched digit 6 images. Clean samples maintain high accuracy with balanced trust and uncertainty masses, with a slightly better trust--uncertainty balance for digit 3 ($0.878$ trust mass for 3 vs $0.866$ trust mass for 6). In contrast, patched samples show a drastic accuracy drop, lower trust ($0.749$), and higher uncertainty, alarming for untrustworthy predictions. Furthermore, when we explicitly distrust the patch pixels while trusting the remaining pixels before feedforwarding through the IPTA, the resulting trust opinion becomes $(0.55, 0.2, 0.25)$. These results show that PaTAS provides interpretable warnings about poisoned outputs.
+
+\begin{table}[ht]
+\centering
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{ccccccc}
+\hline
+Patch & \multicolumn{2}{c}{Trust} & \multicolumn{2}{c}{Clean acc.\ (\%)} & \multicolumn{2}{c}{Patched acc.\ (\%)} \\
+size & 3 & 6 & 3 & 6 & 3 & 6 \\
+\hline
+\((1 \times 1)\) & 0.891 & 0.699 & 97.62 & 96.97 & 97.27 & 81.00 \\
+\((4 \times 4)\) & 0.871 & 0.682 & 97.43 & 96.66 & 86.43 & 70.35 \\
+\((10 \times 10)\) & 0.733 & 0.578 & 97.33 & 97.18 & 87.52 & 58.98 \\
+\((27 \times 27)\) & 0.035 & 0.028 & 97.78 & 97.18 & 0 & 0 \\
+\hline
+\end{tabular}
+\caption{Poisoned MNIST. Overall train/test accuracy stays in the range 96.3--99.5\%/97.6--97.8\% across all patch sizes and is omitted.}
+\label{tab:mnistpois}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ccccccccc}
+\hline
+ & Accuracy (\%) & Trust  & Distrust & Uncertainty \\
+\hline
+Clean 3 & 97.53 & 0.878 & 0.0 & 0.122\\
+
+Clean 6  & 96.66 & 0.866 & 0.0 & 0.134\\
+
+6 with patch& 70.35 & 0.749 & 0.0 & 0.251\\
+
+6 with patch & -- & 0.550 & 0.2 & 0.250\\
+(patch distrusted) &&&&\\
+\hline
+\end{tabular}
+\caption{IPTA results for a neural network trained on poisoned datasets with patch size $4\times 4$. Results are obtained by feedforwarding a fully trusted opinion through the IPTA, except for the last row where patch pixels are explicitly distrusted. All values are averaged over 10 runs with different random initialization seeds; standard deviation is below 0.001 across all inputs.}
+\label{tab:mnistpoisipta}
+\end{table}

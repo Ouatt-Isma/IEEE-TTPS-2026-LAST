@@ -1,0 +1,62 @@
+\documentclass[conference]{IEEEtran}
+
+\input{macros}
+\begin{document}
+
+\title{PaTAS: A Framework for Trust Propagation in Neural Networks Using Subjective Logic}
+
+% \author{Koffi Ismael Ouattara,
+%         Ioannis Krontiris, 
+%         Theo Dimitrakos,
+%         Dennis Eisermann,
+%         Houda Labiod,
+%         and Frank Kargl }
+
+\maketitle
+
+\begin{abstract}
+Trustworthiness has become a key requirement for the deployment of artificial intelligence systems in safety-critical applications. Conventional evaluation metrics, such as accuracy and precision, fail to appropriately capture uncertainty or the reliability of model predictions, particularly under adversarial or degraded conditions. This paper introduces the \emph{Parallel Trust Assessment System (PaTAS)}, a framework for modeling and propagating trust in neural networks using Subjective Logic (SL). PaTAS operates in parallel with standard neural computation through \emph{Trust Nodes} and \emph{Trust Functions} that propagate input, parameter, and activation trust across the network. The framework defines a \emph{Parameter Trust Update} mechanism to refine parameter reliability during training and an \emph{Inference-Path Trust Assessment (IPTA)} method that, given a trained model and an input, returns a trust opinion, quantifying belief, disbelief, and uncertainty, on the prediction. Experiments on real-world and adversarial datasets show that these estimates are interpretable, symmetric, and convergent, and that they complement accuracy by exposing reliability gaps in poisoned, biased, or uncertain data. PaTAS assigns markedly lower trust to neural network output from inputs carrying an adversarial patch than to neural network output from clean inputs, and flags predictions that remain accurate yet rely on parameters learned from corrupted data, reliability gaps that conventional confidence scores do not reveal. By enabling transparent and quantifiable trust reasoning within neural architectures, PaTAS provides a foundation for evaluating model reliability across the AI lifecycle.
+\end{abstract}
+
+% \begin{IEEEkeywords}
+% Trustworthy AI, Subjective Logic, Neural Networks, Uncertainty Quantification, Trust Propagation, Data Corruption
+% \end{IEEEkeywords}
+
+% =====================================================================
+% Author working notes (kept out of the PDF -- todonotes render in the
+% output and would be visible to reviewers).
+%
+% Remaining before submission:
+%   - Fill every \TODO{} and \NUM in sections/evaluation.tex
+%     (Experiment 4 and Sec. VI-C comparison).
+%   - Ablations: (a) epsilon threshold, (b) fusion operator choice.
+%   - Justify the gradient-trust assumption.
+%   - Input/label trust availability: consider submitting the dataset
+%     trust paper first so it can be cited rather than assumed.
+% =====================================================================
+
+\input{sections/introduction}
+% \input{sections/uncertainty}
+\input{sections/background}
+\input{sections/rw}
+
+
+\input{sections/pbstate}
+
+\input{sections/solution}
+\input{sections/ptasnn}
+
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\input{sections/conclusion} 
+% \section*{Acknowledgments}
+% This should be a simple paragraph before the References to thank those individuals and institutions who have supported your work on this article.
+\vspace{-1em}
+\bibliographystyle{IEEEtran}
+\bibliography{bibtex/bib/references, bibtex/bib/calib, bibtex/bib/ecmlbias}
+
+\input{sections/appendices}
+
+\end{document}
+
