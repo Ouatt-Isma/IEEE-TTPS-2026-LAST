@@ -171,3 +171,19 @@
   \includegraphics[width=\textwidth]{plots_v2/MNIST/poisoned/plot_ptas-128-t-t-ps27.pdf}
   \caption{27×27 pixels}
 \end{figure}
+\subsection{Plots for the Comparative Trust Evaluation (\cref{exp:4})}\label{sec:resexp4}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{plots_v2/exp4/roc_ood_mnist.pdf}
+  \caption{Out-of-distribution detection ROC (MNIST in-distribution vs.\ Fashion-MNIST OOD): each method's own score as the discriminator, corresponding to \cref{tab:comparative}.}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{plots_v2/exp4/roc_mixed_fashion.pdf}
+  \caption{Correct-vs-incorrect ROC on the Fashion-MNIST mixed batch (clean + corrupted inputs pooled 1:1).}
+\end{figure}
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.62\textwidth]{plots_v2/exp4/model_trust_vs_labelnoise.pdf}
+  \caption{Training-quality audit (\cref{tab:audit}): PaTAS model-side trust, mean softmax confidence, and test accuracy as functions of the train-time label-flip rate $p$. Trust drops as a tripwire at any non-zero rate without using test data; confidence tracks severity but requires a clean labelled test set.}
+\end{figure}
